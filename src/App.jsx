@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import "./index.css";
 
@@ -35,11 +35,36 @@ async function fetchVideoIdForMood(mood) {
 
 export default function App() {
   const [spotifyToken, setSpotifyToken] = useState(null);
+  const [spotifyUser, setSpotifyUser] = useState(null);
   const [mood, setMood] = useState(null);
-  const [trackId, setTrackId] = useState(null); // ✅ unified id for YT or Spotify
+  const [trackId, setTrackId] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [platform, setPlatform] = useState("youtube"); // ✅ default YouTube
+  const [platform, setPlatform] = useState("youtube");
+
+  // 🔄 Restore Spotify session
+  useEffect(() => {
+    const token = localStorage.getItem("spotify_token");
+    if (token) {
+      setSpotifyToken(token);
+      fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.id) {
+            setSpotifyUser(data);
+          } else {
+            setSpotifyToken(null);
+            localStorage.removeItem("spotify_token");
+          }
+        })
+        .catch(() => {
+          setSpotifyToken(null);
+          localStorage.removeItem("spotify_token");
+        });
+    }
+  }, []);
 
   const playForMood = async (m) => {
     setMood(m);
@@ -100,9 +125,33 @@ export default function App() {
           </button>
         </div>
 
-        {/* ✅ Spotify Login Button */}
+        {/* ✅ Spotify Auth / User Info */}
         {platform === "spotify" && (
-          <SpotifyAuth onToken={setSpotifyToken} />
+          <div className="mt-4">
+            {spotifyUser ? (
+              <div className="flex items-center justify-center gap-3 bg-white shadow-md rounded-xl px-4 py-2">
+                <img
+                  src={spotifyUser.images?.[0]?.url || "https://via.placeholder.com/40"}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full"
+                />
+                <span className="font-medium">{spotifyUser.display_name}</span>
+              </div>
+            ) : (
+              <SpotifyAuth
+                onToken={(token) => {
+                  localStorage.setItem("spotify_token", token);
+                  setSpotifyToken(token);
+                  // fetch profile right away
+                  fetch("https://api.spotify.com/v1/me", {
+                    headers: { Authorization: `Bearer ${token}` },
+                  })
+                    .then((res) => res.json())
+                    .then((data) => setSpotifyUser(data));
+                }}
+              />
+            )}
+          </div>
         )}
       </motion.header>
 
