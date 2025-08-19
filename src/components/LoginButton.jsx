@@ -1,21 +1,27 @@
-// components/LoginButton.jsx
 import React from "react";
 
-export default function LoginButton() {
-  const CLIENT_ID = "YOUR_SPOTIFY_CLIENT_ID"; // Replace with your actual client ID
-  const REDIRECT_URI = "https://moodapp-sigma.vercel.app/callback"; // Must match your Spotify Dashboard
-  const SCOPES = ["user-read-email", "user-read-private"];
+export default function SpotifyAuth() {
+  const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+  const REDIRECT_URI = "https://moodapp-sigma.vercel.app/callback"; // must match Dashboard
+  const SCOPES = [
+    "user-read-email",
+    "user-read-private",
+  ];
 
-  const loginUrl = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI
-  )}&scope=${SCOPES.join("%20")}&response_type=token&show_dialog=true`;
+  const login = () => {
+    const authUrl = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI
+    )}&scope=${SCOPES.join("%20")}&response_type=token&show_dialog=true`;
+
+    window.location.href = authUrl;
+  };
 
   return (
-    <a
-      href={loginUrl}
-      className="px-6 py-3 bg-green-600 text-white rounded-2xl shadow-lg hover:bg-green-700 transition-all"
+    <button
+      onClick={login}
+      className="bg-green-500 text-white px-4 py-2 rounded-xl hover:bg-green-600"
     >
       Login with Spotify
-    </a>
+    </button>
   );
 }
