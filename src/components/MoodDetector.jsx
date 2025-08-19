@@ -8,6 +8,7 @@ export default function MoodDetector({ onDetect }) {
   const [detecting, setDetecting] = useState(false);
   const [liveMode, setLiveMode] = useState(false);
   const [lastMood, setLastMood] = useState(null);
+  const [statusMessage, setStatusMessage] = useState(""); // 👈 added
 
   useEffect(() => {
     const loadModels = async () => {
@@ -20,6 +21,7 @@ export default function MoodDetector({ onDetect }) {
         setReady(true);
       } catch (e) {
         console.error("Model load error", e);
+        setStatusMessage("❌ Failed to load AI models. Check /public/models folder.");
       }
     };
     loadModels();
@@ -36,8 +38,10 @@ export default function MoodDetector({ onDetect }) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+      setStatusMessage(""); // clear message
     } catch (e) {
       console.error("Camera permission error", e);
+      setStatusMessage("⚠️ Camera access denied. Please allow webcam.");
     }
   };
 
@@ -50,17 +54,21 @@ export default function MoodDetector({ onDetect }) {
     if (!videoRef.current) return;
 
     const options = new faceapi.TinyFaceDetectorOptions({
-      inputSize: 224,
-      scoreThreshold: 0.5,
+      inputSize: 320,
+      scoreThreshold: 0.4,
     });
     const result = await faceapi
       .detectSingleFace(videoRef.current, options)
       .withFaceExpressions();
 
     if (result?.expressions) {
+      console.log("Expressions:", result.expressions);
       const mood = mapExpressionToMood(result.expressions);
       setLastMood(mood);
       onDetect?.(mood);
+      setStatusMessage(""); // clear warning if detection works
+    } else {
+      setStatusMessage("😕 Face not detected. Check lighting and stay close to the camera.");
     }
   };
 
@@ -69,12 +77,10 @@ export default function MoodDetector({ onDetect }) {
     setDetecting(true);
     await startCamera();
 
-    // show preview for ~1s then capture
     setTimeout(async () => {
       await detectOnce();
       setDetecting(false);
 
-      // keep preview a bit longer before hiding
       setTimeout(() => {
         stopCamera();
       }, 500);
@@ -87,8 +93,8 @@ export default function MoodDetector({ onDetect }) {
     await startCamera();
 
     const options = new faceapi.TinyFaceDetectorOptions({
-      inputSize: 224,
-      scoreThreshold: 0.5,
+      inputSize: 320,
+      scoreThreshold: 0.4,
     });
 
     const loop = async () => {
@@ -101,6 +107,9 @@ export default function MoodDetector({ onDetect }) {
         const mood = mapExpressionToMood(result.expressions);
         setLastMood(mood);
         onDetect?.(mood);
+        setStatusMessage("");
+      } else {
+        setStatusMessage("⚠️ No face detected. Try better lighting or move closer.");
       }
       requestAnimationFrame(loop);
     };
@@ -119,9 +128,7 @@ export default function MoodDetector({ onDetect }) {
         {/* Quick detect button */}
         <button
           className={`px-4 py-2 rounded-xl border shadow ${
-            ready
-              ? "bg-green-600 text-white"
-              : "bg-gray-200 text-gray-600"
+            ready ? "bg-green-600 text-white" : "bg-gray-200 text-gray-600"
           }`}
           onClick={handleQuickDetect}
           disabled={!ready || detecting || liveMode}
@@ -155,10 +162,19 @@ export default function MoodDetector({ onDetect }) {
         )}
       </div>
 
+      {/* Status/Error Message */}
+      {statusMessage && (
+        <div className="mt-2 text-sm text-red-600 font-medium">
+          {statusMessage}
+        </div>
+      )}
+
       {/* Video for both quick + live preview */}
       <video
         ref={videoRef}
-        className={`${(liveMode || detecting) ? "mt-2 rounded-xl max-h-40" : "hidden"}`}
+        width={400}
+        height={300}
+        className={`${liveMode || detecting ? "mt-2 rounded-xl" : "hidden"}`}
         muted
         playsInline
       />
