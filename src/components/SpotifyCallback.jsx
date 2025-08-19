@@ -2,17 +2,28 @@ import { useEffect } from "react";
 
 export default function SpotifyCallback() {
   useEffect(() => {
-    // Spotify sends back token in the URL hash (#)
     const hash = window.location.hash;
+
     if (hash) {
-      const params = new URLSearchParams(hash.substring(1)); // remove #
+      const params = new URLSearchParams(hash.substring(1));
       const token = params.get("access_token");
 
       if (token) {
+        // Save token in localStorage
         localStorage.setItem("spotify_token", token);
-        // Redirect back to home page
-        window.location.href = "/";
+
+        // ✅ Clear hash from URL
+        window.history.replaceState({}, document.title, "/");
+
+        // ✅ Redirect to home
+        window.location.replace("/");
+      } else {
+        // If no token found, redirect home anyway
+        window.location.replace("/");
       }
+    } else {
+      // If no hash at all
+      window.location.replace("/");
     }
   }, []);
 
